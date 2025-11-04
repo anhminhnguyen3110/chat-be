@@ -7,11 +7,11 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from src.models.base import Base
-from src.models.user import User
-from src.models.message import Message
-from src.models.document import Document
-from src.config.settings import settings
+from app.models.base import Base
+from app.models.user import User
+from app.models.message import Message
+from app.models.document import Document
+from app.config.settings import settings
 
 config = context.config
 

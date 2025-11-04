@@ -1,0 +1,57 @@
+from pydantic import BaseModel
+from typing import List, Dict, Optional, Any, Literal
+from ..constants.enums import MessageRole
+
+
+class ChatMessage(BaseModel):
+    role: MessageRole
+    content: str
+
+
+class StreamChunk(BaseModel):
+    """Streaming response chunk with type."""
+    type: Literal["chunk", "error", "done"]
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class ChatRequest(BaseModel):
+    """Request for smart chat with agent routing."""
+    query: str
+    session_id: Optional[int | str] = None  # Accept both int and string
+    confidence_threshold: Optional[float] = 0.6  # Minimum confidence for auto-routing
+
+
+class ChatResponse(BaseModel):
+    """Response from smart chat."""
+    query: str
+    response: str
+    agent_type: Optional[str] = None
+    confidence: Optional[float] = None
+    session_id: Optional[int | str] = None  # Return int or string
+    session_name: Optional[str] = None  # Session name for newly created sessions
+    is_new_session: Optional[bool] = False  # Indicates if this is a newly created session
+    error: Optional[str] = None
+
+
+class ChatCompletionRequest(BaseModel):
+    query: str  # Changed from 'prompt' to match test
+    user_id: Optional[int] = None
+    session_id: Optional[int | str] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    use_guardrail: Optional[bool] = True
+
+
+class ChatCompletionResponse(BaseModel):
+    content: str
+    model: str
+    usage: Optional[Dict[str, int]] = None
+    guardrail_result: Optional[Dict[str, Any]] = None
+
+
+class DeleteMessagesRequest(BaseModel):
+    session_id: str
+    message_ids: Optional[List[int]] = None
+

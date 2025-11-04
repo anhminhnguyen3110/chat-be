@@ -9,7 +9,7 @@ docker-compose up -d postgres redis
 uv sync
 source .venv/bin/activate
 alembic upgrade head
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## API Documentation

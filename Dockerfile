@@ -8,10 +8,10 @@ COPY pyproject.toml ./
 
 RUN uv sync --frozen
 
-COPY src ./src
+COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
 EXPOSE 8000
 
-CMD .venv/bin/alembic upgrade head && .venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000
+CMD .venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
