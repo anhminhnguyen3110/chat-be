@@ -1,7 +1,7 @@
 """Chat agent state definition."""
 
 from typing import Optional
-from ..base import BaseAgentState
+from app.ai_core.agents.base.state import BaseAgentState
 
 
 class ChatAgentState(BaseAgentState, total=False):

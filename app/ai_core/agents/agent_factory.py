@@ -1,11 +1,12 @@
 """Agent factory with registry pattern."""
 
-from typing import Dict, Type, Optional, Any
+from typing import Type, Optional, Dict
 from enum import Enum
-from .base.base import BaseAgent
-from .chat_agent.agent import ChatAgent
-from .neo4j_agent.agent import Neo4jAgent
-from .rag_agent.agent import RAGAgent
+from app.ai_core.agents.base.base import BaseAgent
+from app.ai_core.agents.chat_agent.agent import ChatAgent
+from app.ai_core.agents.neo4j_agent.agent import Neo4jAgent
+from app.ai_core.agents.rag_agent.agent import RAGAgent
+from app.types import AgentConfig
 
 
 class AgentType(str, Enum):
@@ -22,7 +23,6 @@ class AgentFactory:
     Uses registry pattern for extensibility.
     """
     
-    # Registry mapping agent types to classes
     _agents: Dict[AgentType, Type[BaseAgent]] = {}
     
     @classmethod
@@ -45,7 +45,7 @@ class AgentFactory:
     def create(
         cls, 
         agent_type: AgentType, 
-        config: Optional[Dict[str, Any]] = None
+        config: Optional[AgentConfig] = None
     ) -> BaseAgent:
         """
         Create agent instance.

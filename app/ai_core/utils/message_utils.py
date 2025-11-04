@@ -11,7 +11,7 @@ from langchain_core.messages import (
 )
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from ...config.settings import settings
+from app.config.settings import settings
 
 
 def prepare_messages_for_llm(
@@ -34,7 +34,6 @@ def prepare_messages_for_llm(
     Returns:
         List of prepared LangChain message objects
     """
-    # Convert dicts to LangChain messages
     lc_messages = []
     for msg in messages:
         role = msg.get("role", "user")
@@ -47,7 +46,6 @@ def prepare_messages_for_llm(
         elif role == "assistant":
             lc_messages.append(AIMessage(content=content))
     
-    # Trim messages to fit context window using LLM's tokenizer
     trimmed = trim_messages(
         lc_messages,
         strategy="last",
@@ -58,7 +56,6 @@ def prepare_messages_for_llm(
         allow_partial=False,
     )
     
-    # Prepend system prompt if provided
     if system_prompt:
         trimmed.insert(0, SystemMessage(content=system_prompt))
     
@@ -89,7 +86,6 @@ def cleanup_response_messages(
         role = msg.get("role")
         content = msg.get("content", "")
         
-        # Filter criteria
         if role not in ["user", "assistant"]:
             continue
         if not content or not content.strip():

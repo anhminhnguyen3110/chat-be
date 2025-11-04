@@ -1,7 +1,7 @@
 import re
 from typing import Optional
-from ..constants.messages import Messages
-from ..exceptions.base import ValidationException
+from app.constants.messages import Messages
+from app.exceptions.base import ValidationException
 
 
 class Validator:

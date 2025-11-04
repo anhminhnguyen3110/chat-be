@@ -1,12 +1,13 @@
-"""Base LLM Provider interface."""
+"""Base LLM provider interface."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, Any
 from langchain_core.messages import BaseMessage, AIMessage
-from ..guardrail.manager import GuardrailManager
-from ...config.settings import settings, Environment
-from ...core.logger import logger
-from ...middleware.metrics import llm_request_count, llm_inference_duration_seconds
+from app.ai_core.guardrail.manager import GuardrailManager
+from app.config.settings import settings, Environment
+from app.core.logger import logger
+from app.middleware.metrics import llm_request_count, llm_inference_duration_seconds
+from app.types import LLMValidationResult, LLMConfig
 
 base_logger = logger.bind(module="llm_provider")
 
@@ -58,45 +59,52 @@ class BaseLLMProvider(ABC):
         """Internal sync invoke method to be implemented by subclasses."""
         pass
     
-    async def _validate_input(self, messages: List[BaseMessage]) -> Dict[str, Any]:
+    async def _validate_input(self, messages: List[BaseMessage]) -> LLMValidationResult:
         """Validate input messages using guardrails."""
         if not self._guardrail_manager:
-            return {"valid": True, "reason": None, "blocked": False}
+            return {"valid": True, "is_safe": True, "blocked": False, "reason": None}
         
         combined_text = " ".join([msg.content for msg in messages if hasattr(msg, 'content')])
-        return await self._guardrail_manager.validate_input(combined_text)
+        result = await self._guardrail_manager.validate_input(combined_text)
+        return {
+            "valid": result.get("is_safe", True),
+            "is_safe": result.get("is_safe", True),
+            "blocked": result.get("blocked", False),
+            "reason": result.get("reason")
+        }
     
-    async def _validate_output(self, response_text: str) -> Dict[str, Any]:
+    async def _validate_output(self, response_text: str) -> LLMValidationResult:
         """Validate output response using guardrails."""
         if not self._guardrail_manager:
-            return {"valid": True, "reason": None, "blocked": False}
+            return {"valid": True, "is_safe": True, "blocked": False, "reason": None}
         
-        return await self._guardrail_manager.validate_output(response_text)
+        result = await self._guardrail_manager.validate_output(response_text)
+        return {
+            "valid": result.get("is_safe", True),
+            "is_safe": result.get("is_safe", True),
+            "blocked": result.get("blocked", False),
+            "reason": result.get("reason")
+        }
     
     async def ainvoke(self, messages: List[BaseMessage]) -> Any:
         """Asynchronously invoke the LLM with messages (with guardrails + retry + fallback)."""
-        # Retry logic
         for attempt in range(self.max_retries):
             try:
-                # Guardrail validation
                 input_validation = await self._validate_input(messages)
                 if not input_validation["valid"]:
                     raise ValueError(f"Input blocked by guardrail: {input_validation['reason']}")
                 
-                # Metrics tracking
                 with llm_inference_duration_seconds.labels(
                     model=self.model,
                     environment=self._environment.value
                 ).time():
                     response = await self._ainvoke_internal(messages)
                 
-                # Output validation
                 response_text = response.content if hasattr(response, 'content') else str(response)
                 output_validation = await self._validate_output(response_text)
                 if not output_validation["valid"]:
                     raise ValueError(f"Output blocked by guardrail: {output_validation['reason']}")
                 
-                # Track success
                 llm_request_count.labels(
                     model=self.model,
                     status="success"
@@ -113,7 +121,6 @@ class BaseLLMProvider(ABC):
                     error=str(e)
                 )
                 
-                # Fallback strategy (production only)
                 if (self._environment == Environment.PRODUCTION 
                     and self.fallback_model 
                     and attempt == self.max_retries - 2):
@@ -126,14 +133,12 @@ class BaseLLMProvider(ABC):
                     self._client = None  # Force reinit
                     continue
                 
-                # Last attempt
                 if attempt == self.max_retries - 1:
                     llm_request_count.labels(
                         model=self.model,
                         status="error"
                     ).inc()
                     
-                    # Production degradation
                     if self._environment == Environment.PRODUCTION:
                         base_logger.error("llm_all_retries_failed_degrading")
                         return self._get_fallback_response(e)
@@ -156,18 +161,16 @@ class BaseLLMProvider(ABC):
             content="I apologize, but I'm experiencing technical difficulties. Please try again in a moment."
         )
     
-    def _get_environment_model_kwargs(self) -> Dict[str, Any]:
+    def _get_environment_model_kwargs(self) -> dict[str, any]:
         """Get environment-specific model parameters."""
         base_kwargs = {}
         
         if self._environment == Environment.DEVELOPMENT:
-            # Dev: Fast & cheap
             base_kwargs.update({
                 "top_p": 0.8,
                 "timeout": 30,
             })
         elif self._environment == Environment.PRODUCTION:
-            # Prod: High quality & reliable
             base_kwargs.update({
                 "top_p": 0.95,
                 "presence_penalty": 0.1,
@@ -196,7 +199,7 @@ class BaseLLMProvider(ABC):
         
         self._client = None
     
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> LLMConfig:
         """Get current provider configuration."""
         return {
             "model": self.model,

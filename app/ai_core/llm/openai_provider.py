@@ -8,8 +8,8 @@ import os
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
 
-from .base import BaseLLMProvider
-from ...config.settings import settings
+from app.ai_core.llm.base import BaseLLMProvider
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -62,17 +62,14 @@ class OpenAIProvider(BaseLLMProvider):
         if self.base_url:
             config["base_url"] = self.base_url
         
-        # Add Langfuse callback if enabled
         if settings.LANGFUSE_ENABLED:
             try:
-                # CallbackHandler picks up credentials from environment (set in main.py)
                 langfuse_handler = CallbackHandler()
                 config["callbacks"] = [langfuse_handler]
                 logger.info("Langfuse tracing enabled for OpenAI provider")
             except Exception as e:
                 logger.warning(f"Failed to initialize Langfuse callback: {e}")
         
-        # Add any additional kwargs
         config.update(self.kwargs)
         
         return ChatOpenAI(**config)

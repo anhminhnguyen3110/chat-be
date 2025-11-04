@@ -14,7 +14,7 @@ from typing import Any, List
 
 import structlog
 
-from ..config.settings import Environment, settings
+from app.config.settings import Environment, settings
 
 settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
 

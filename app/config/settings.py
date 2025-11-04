@@ -18,11 +18,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
     
-    # Server Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     
-    # Environment
     ENVIRONMENT: Environment = Environment.DEVELOPMENT
     
     DATABASE_URL: str
@@ -37,7 +35,10 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2000
     LLM_FALLBACK_MODEL: str = "qwen/qwen3-next-80b-a3b-thinking"
     
-    # Environment-aware properties
+    AGENT_CONFIDENCE_THRESHOLD: float = 0.6  # Minimum confidence for auto-routing
+    AGENT_MAX_HISTORY_MESSAGES: int = 10  # Maximum history messages to keep
+    AGENT_MAX_CONTEXT_TOKENS: int = 4000  # Maximum context tokens for LLM
+    
     @property
     def MAX_LLM_CALL_RETRIES(self) -> int:
         """Environment-specific retry count."""
@@ -72,20 +73,17 @@ class Settings(BaseSettings):
     
     ENABLE_GUARDRAIL: bool = True
     
-    # Neo4j Configuration
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "neo4j"
     NEO4J_DATABASE: str = "neo4j"
     NEO4J_AGENT_MAX_RETRIES: int = 3
     
-    # Langfuse Configuration
     LANGFUSE_ENABLED: bool = False
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
     
-    # Checkpointer Configuration
     ENABLE_CHECKPOINTER: bool = True
     CHECKPOINT_TABLES: List[str] = ["checkpoints", "checkpoint_writes", "checkpoint_blobs"]
     CHECKPOINT_RETENTION_DAYS: int = 30
@@ -94,7 +92,6 @@ class Settings(BaseSettings):
     def SHOULD_USE_CHECKPOINTER(self) -> bool:
         """Disable checkpointer in development on Windows to avoid ProactorEventLoop issues."""
         if self.ENVIRONMENT == Environment.DEVELOPMENT:
-            # Disable on Windows in development
             if platform.system() == "Windows":
                 return False
         return self.ENABLE_CHECKPOINTER

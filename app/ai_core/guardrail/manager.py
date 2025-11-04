@@ -1,6 +1,6 @@
-from .content_guardrail import ContentGuardrail
-from ...config.settings import settings
-from typing import Dict, Any
+from app.ai_core.guardrail.content_guardrail import ContentGuardrail
+from app.config.settings import settings
+from app.types import GuardrailValidationResult
 
 
 class GuardrailManager:
@@ -10,31 +10,31 @@ class GuardrailManager:
             ContentGuardrail()
         ]
     
-    async def validate_input(self, input_text: str) -> Dict[str, Any]:
+    async def validate_input(self, input_text: str) -> GuardrailValidationResult:
         if not self.enabled:
             return {
-                "valid": True,
-                "reason": None,
-                "blocked": False
+                "is_safe": True,
+                "blocked": False,
+                "reason": None
             }
         
         for guardrail in self.guardrails:
             result = await guardrail.validate_input(input_text)
-            if not result["valid"]:
+            if not result.get("is_safe", True):
                 return result
         
         return {
-            "valid": True,
-            "reason": None,
-            "blocked": False
+            "is_safe": True,
+            "blocked": False,
+            "reason": None
         }
     
-    async def validate_output(self, output_text: str) -> Dict[str, Any]:
+    async def validate_output(self, output_text: str) -> GuardrailValidationResult:
         if not self.enabled:
             return {
-                "valid": True,
-                "reason": None,
-                "blocked": False
+                "is_safe": True,
+                "blocked": False,
+                "reason": None
             }
         
         for guardrail in self.guardrails:

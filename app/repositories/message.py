@@ -1,8 +1,8 @@
 from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from .base import BaseRepository
-from ..models.message import Message
+from app.repositories.base import BaseRepository
+from app.models.message import Message
 
 
 class MessageRepository(BaseRepository[Message]):

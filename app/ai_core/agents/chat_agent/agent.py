@@ -1,13 +1,14 @@
 """Chat agent for fast general conversation."""
 
-from typing import Dict, Any, Optional
+from typing import Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
-from ..base import BaseAgent
-from ...llm.llm_factory import LLMFactory, LLMProviderType
-from .state import ChatAgentState
-from ....config.settings import settings
+from app.ai_core.agents.base import BaseAgent
+from app.ai_core.llm.llm_factory import LLMFactory, LLMProviderType
+from app.ai_core.agents.chat_agent.state import ChatAgentState
+from app.config.settings import settings
+from app.types import AgentConfig, NodeReturnType
 
 
 class ChatAgent(BaseAgent):
@@ -27,7 +28,7 @@ class ChatAgent(BaseAgent):
     
     def __init__(
         self,
-        config: Optional[Dict[str, Any]] = None
+        config: Optional[AgentConfig] = None
     ):
         """
         Initialize Chat Agent.
@@ -37,7 +38,6 @@ class ChatAgent(BaseAgent):
         """
         config = config or {}
         
-        # Create LLM with OpenRouter support
         self.llm = LLMFactory.create(
             provider_type=LLMProviderType(config.get("llm_provider", settings.LLM_PROVIDER)),
             model=config.get("model", settings.LLM_MODEL),
@@ -57,8 +57,8 @@ class ChatAgent(BaseAgent):
         user_id: Optional[int] = None,
         history: Optional[list] = None,
         system_prompt: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: Optional[dict] = None
+    ) -> NodeReturnType:
         """
         Execute chat agent with system prompt support.
         
@@ -73,14 +73,11 @@ class ChatAgent(BaseAgent):
         Returns:
             Agent response
         """
-        # Build messages from history + current query
         messages = []
         
-        # Add system prompt if provided
         if system_prompt:
             messages.append(SystemMessage(content=system_prompt))
         
-        # Convert history to messages
         if history:
             for msg in history:
                 if msg.get("role") == "user":
@@ -88,10 +85,8 @@ class ChatAgent(BaseAgent):
                 elif msg.get("role") == "assistant":
                     messages.append(AIMessage(content=msg["content"]))
         
-        # Add current query
         messages.append(HumanMessage(content=query))
         
-        # Build state with new messages field
         state: ChatAgentState = {
             "messages": messages,
             "session_id": session_id,
@@ -99,14 +94,12 @@ class ChatAgent(BaseAgent):
             "metadata": metadata or {},
         }
         
-        # Build config for graph execution
         config = self._build_graph_config(
             session_id=session_id,
             user_id=user_id,
             metadata=metadata
         )
         
-        # Execute with config
         return await self._execute_internal(state, config)
     
     def _build_graph(self) -> StateGraph:
@@ -127,7 +120,7 @@ class ChatAgent(BaseAgent):
         
         return workflow.compile()
     
-    async def _chat_node(self, state: ChatAgentState) -> Dict[str, Any]:
+    async def _chat_node(self, state: ChatAgentState) -> NodeReturnType:
         """
         Chat node - generate response.
         
@@ -140,8 +133,6 @@ class ChatAgent(BaseAgent):
         self.logger.info("Executing chat node")
         
         try:
-            # Messages already in state with add_messages reducer
-            # No need to rebuild - just use directly
             messages = state.get("messages", [])
             
             if not messages:
@@ -149,7 +140,6 @@ class ChatAgent(BaseAgent):
             
             response = await self.llm.ainvoke(messages)
             
-            # Return AI message - add_messages will auto-merge it
             return {
                 "messages": [response],
                 "error": None
@@ -158,7 +148,6 @@ class ChatAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Chat node error: {str(e)}", exc_info=True)
             
-            # Return error message as AI response
             error_msg = AIMessage(
                 content="I apologize, but I encountered an error. Please try again."
             )

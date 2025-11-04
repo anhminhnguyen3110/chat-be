@@ -1,6 +1,7 @@
-from .base import BaseGuardrail
-from typing import Dict, Any, List
+from app.ai_core.guardrail.base import BaseGuardrail
+from typing import List
 import re
+from app.types import GuardrailValidationResult
 
 
 class ContentGuardrail(BaseGuardrail):
@@ -29,21 +30,21 @@ class ContentGuardrail(BaseGuardrail):
         self.max_length = 10000
         self.min_length = 1
     
-    async def validate_input(self, input_text: str) -> Dict[str, Any]:
+    async def validate_input(self, input_text: str) -> GuardrailValidationResult:
         if not input_text or len(input_text.strip()) < self.min_length:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": "Input is empty or too short",
                 "blocked": True,
-                "category": "length"
+                "categories": ["length"]
             }
         
         if len(input_text) > self.max_length:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": f"Input exceeds maximum length of {self.max_length} characters",
                 "blocked": True,
-                "category": "length"
+                "categories": ["length"]
             }
         
         violations = []
@@ -60,23 +61,23 @@ class ContentGuardrail(BaseGuardrail):
         
         if violations:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": f"Input contains blocked content: {', '.join(violations)}",
                 "blocked": True,
-                "violations": violations
+                "categories": violations
             }
         
         return {
-            "valid": True,
+            "is_safe": True,
             "reason": None,
             "blocked": False,
-            "violations": []
+            "categories": None
         }
     
-    async def validate_output(self, output_text: str) -> Dict[str, Any]:
+    async def validate_output(self, output_text: str) -> GuardrailValidationResult:
         if not output_text or len(output_text.strip()) < self.min_length:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": "Output is empty or too short",
                 "blocked": True,
                 "category": "length"
@@ -84,10 +85,10 @@ class ContentGuardrail(BaseGuardrail):
         
         if len(output_text) > self.max_length:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": f"Output exceeds maximum length of {self.max_length} characters",
                 "blocked": True,
-                "category": "length"
+                "categories": ["length"]
             }
         
         violations = []
@@ -115,15 +116,15 @@ class ContentGuardrail(BaseGuardrail):
         
         if violations:
             return {
-                "valid": False,
+                "is_safe": False,
                 "reason": f"Output contains violations: {', '.join(violations)}",
                 "blocked": True,
-                "violations": violations
+                "categories": violations
             }
         
         return {
-            "valid": True,
+            "is_safe": True,
             "reason": None,
             "blocked": False,
-            "violations": []
+            "categories": None
         }

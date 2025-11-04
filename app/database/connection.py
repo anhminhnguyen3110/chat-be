@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncConnection
+from typing import Optional
 from sqlalchemy import text
-from .engine import engine
+import logging
+from app.database.engine import engine
 
 
 @asynccontextmanager

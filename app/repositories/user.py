@@ -1,8 +1,8 @@
 from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from .base import BaseRepository
-from ..models.user import User
+from app.repositories.base import BaseRepository
+from app.models.user import User
 
 
 class UserRepository(BaseRepository[User]):

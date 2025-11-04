@@ -1,13 +1,14 @@
 """Intent detection and automatic agent routing."""
 
-from typing import Dict, Any, Optional
+from typing import Optional
 import logging
 from langchain_core.messages import HumanMessage
 
-from ..llm import LLMFactory, LLMProviderType
-from ...config.settings import settings
-from .agent_factory import AgentFactory, AgentType
-from ..prompts import get_intent_detection_prompt
+from app.ai_core.llm import LLMFactory, LLMProviderType
+from app.config.settings import settings
+from app.ai_core.agents.agent_factory import AgentFactory, AgentType
+from app.ai_core.prompts import get_intent_detection_prompt
+from app.types import AgentConfig, AgentExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,12 @@ class AgentRouter:
         """Initialize router with fast LLM for intent detection."""
         self.llm = LLMFactory.create(
             provider_type=LLMProviderType(settings.LLM_PROVIDER),
-            model="gpt-3.5-turbo",  # Fast model for routing
-            temperature=0.0,  # Deterministic
-            max_tokens=50,
+            model=settings.LLM_MODEL, 
+            temperature=settings.LLM_TEMPERATURE,
+            max_tokens=settings.LLM_MAX_TOKENS,
             api_key=settings.LLM_API_KEY,
             base_url=settings.LLM_BASE_URL,
-            enable_guardrail=False  # No guardrail for routing
+            enable_guardrail=False
         )
     
     async def detect_intent(self, user_input: str) -> tuple[AgentType, float]:
@@ -77,9 +78,9 @@ class AgentRouter:
         session_id: Optional[str] = None,
         user_id: Optional[int] = None,
         agent_type: Optional[AgentType] = None,
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[AgentConfig] = None,
         confidence_threshold: float = 0.6
-    ) -> Dict[str, Any]:
+    ) -> AgentExecutionResult:
         """
         Route to appropriate agent and execute.
         
@@ -113,7 +114,6 @@ class AgentRouter:
         
         agent = AgentFactory.create(agent_type, config)
         
-        # ✨ Execute with session tracking
         result = await agent.execute(
             query=user_input,
             session_id=session_id,

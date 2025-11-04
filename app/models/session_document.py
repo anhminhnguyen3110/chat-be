@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey
-from .base import BaseModel
+from app.models.base import BaseModel
 
 
 class SessionDocument(BaseModel):

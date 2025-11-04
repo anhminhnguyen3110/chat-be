@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query, status, HTTPException
-from ...services.session import SessionService
-from ...services.message import MessageService
-from ...schemas.session import SessionCreate, SessionResponse, SessionUpdate, GroupedSessionsResponse
-from ...schemas.message import MessageResponse
-from ...database.session import get_db_session
-from ...exceptions.base import NotFoundException
-from ...exceptions.database import DatabaseException
+from app.services.session import SessionService
+from app.services.message import MessageService
+from app.schemas.session import SessionCreate, SessionResponse, SessionUpdate, GroupedSessionsResponse
+from app.schemas.message import MessageResponse
+from app.database.session import get_db_session
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import logging
@@ -38,7 +38,6 @@ async def get_session(
     session: AsyncSession = Depends(get_db_session)
 ):
     """Get a session by ID."""
-    # Validate ID range
     if session_id <= 0 or session_id > 2147483647:  # int32 max
         raise HTTPException(status_code=422, detail="Invalid session ID")
     

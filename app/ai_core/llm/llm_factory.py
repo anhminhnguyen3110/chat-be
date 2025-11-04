@@ -1,11 +1,12 @@
-"""LLM Factory for creating LLM provider instances."""
+"""LLM Factory for creating LLM providers."""
 
-from typing import Dict, Type, Optional
 from enum import Enum
+from typing import Optional, Dict, Type
+import logging
 
-from .base import BaseLLMProvider
-from .openai_provider import OpenAIProvider
-from .bedrock_provider import BedrockProvider
+from app.ai_core.llm.base import BaseLLMProvider
+from app.ai_core.llm.openai_provider import OpenAIProvider
+from app.ai_core.llm.bedrock_provider import BedrockProvider
 
 
 class LLMProviderType(str, Enum):

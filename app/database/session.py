@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from .engine import engine
+from app.database.engine import engine
 
 async_session_factory = sessionmaker(
     engine,

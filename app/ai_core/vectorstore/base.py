@@ -1,8 +1,10 @@
 """Base vector store interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
+
+from app.types import VectorStoreConfig, VectorStoreFilter, DocumentWithScore
 
 
 @dataclass
@@ -10,7 +12,7 @@ class Document:
     """Document with metadata."""
     id: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, any]
     embedding: Optional[List[float]] = None
 
 
@@ -21,7 +23,7 @@ class BaseVectorStore(ABC):
     Provides interface for document storage and similarity search.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[VectorStoreConfig] = None):
         """
         Initialize vector store.
         
@@ -53,7 +55,7 @@ class BaseVectorStore(ABC):
         self,
         query: str,
         k: int = 5,
-        filter_dict: Optional[Dict[str, Any]] = None,
+        filter_dict: Optional[VectorStoreFilter] = None,
         **kwargs
     ) -> List[Document]:
         """
@@ -75,9 +77,9 @@ class BaseVectorStore(ABC):
         self,
         query: str,
         k: int = 5,
-        filter_dict: Optional[Dict[str, Any]] = None,
+        filter_dict: Optional[VectorStoreFilter] = None,
         **kwargs
-    ) -> List[tuple[Document, float]]:
+    ) -> List[DocumentWithScore]:
         """
         Search for similar documents with relevance scores.
         

@@ -1,20 +1,21 @@
 """Neo4j agent for Cypher query generation and execution."""
 
-from typing import Dict, Any, Optional
+from typing import Optional, Any
 from langgraph.graph import StateGraph, END
 import asyncio
 from langchain_core.messages import HumanMessage
 
-from ..base import BaseAgent
-from ...llm.llm_factory import LLMFactory, LLMProviderType
-from .state import Neo4jAgentState
-from ...tools.think import ThinkTool
-from ...mcp.neo4j_client import Neo4jMCPClient
-from ...prompts.neo4j_prompts import (
+from app.ai_core.agents.base import BaseAgent
+from app.ai_core.llm.llm_factory import LLMFactory, LLMProviderType
+from app.ai_core.agents.neo4j_agent.state import Neo4jAgentState
+from app.ai_core.tools.think import ThinkTool
+from app.ai_core.mcp.neo4j_client import Neo4jMCPClient
+from app.ai_core.prompts.neo4j_prompts import (
     get_neo4j_analysis_prompt,
     get_neo4j_generation_prompt
 )
-from ....config.settings import settings
+from app.config.settings import settings
+from app.types import AgentConfig, NodeReturnType
 
 
 class Neo4jAgent(BaseAgent):
@@ -22,7 +23,7 @@ class Neo4jAgent(BaseAgent):
     
     def __init__(
         self,
-        config: Optional[Dict[str, Any]] = None
+        config: Optional[AgentConfig] = None
     ):
         """Initialize Neo4j Agent."""
         config = config or {}
@@ -110,7 +111,7 @@ class Neo4jAgent(BaseAgent):
             return "retry"
         return "respond"
     
-    async def _get_schema_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _get_schema_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Fetch Neo4j schema first."""
         self.logger.info("Fetching Neo4j schema")
         
@@ -126,12 +127,11 @@ class Neo4jAgent(BaseAgent):
             self.logger.error(f"Schema fetch error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _analyze_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _analyze_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Analyze query with schema context."""
         self.logger.info("Analyzing query with schema")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             schema = state.get("schema", {})
             
@@ -144,12 +144,11 @@ class Neo4jAgent(BaseAgent):
             self.logger.error(f"Analysis error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _generate_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _generate_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Generate Cypher query using LLM."""
         self.logger.info("Generating Cypher query")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             schema = state.get("schema", {})
             attempt = state.get("attempt", 0) + 1
@@ -207,7 +206,7 @@ class Neo4jAgent(BaseAgent):
         
         return content.strip()
     
-    async def _validate_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _validate_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Validate Cypher query."""
         self.logger.info("Validating Cypher query")
         
@@ -240,7 +239,7 @@ class Neo4jAgent(BaseAgent):
                 "validation_passed": True
             }
     
-    async def _execute_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _execute_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Execute Cypher query."""
         self.logger.info("Executing Cypher query")
         
@@ -263,7 +262,7 @@ class Neo4jAgent(BaseAgent):
                 "execution_error": str(e)
             }
     
-    async def _evaluate_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _evaluate_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Evaluate if results are satisfactory or need retry."""
         self.logger.info("Evaluating query results")
         
@@ -337,7 +336,7 @@ Your evaluation:"""
                 "evaluation": f"ERROR: {str(e)}"
             }
     
-    async def _respond_node(self, state: Neo4jAgentState) -> Dict[str, Any]:
+    async def _respond_node(self, state: Neo4jAgentState) -> NodeReturnType:
         """Format and return final response."""
         self.logger.info("Formatting final response")
         

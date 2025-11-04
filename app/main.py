@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any
 import os
 import uvicorn
 from starlette.responses import Response
@@ -10,24 +10,22 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
-from .api.routes import chatbot, user, session, message, document
-from .config.settings import settings
-from .constants.config import Config
-from .middleware.middleware import LoggingMiddleware
-from .middleware.metrics import MetricsMiddleware, get_metrics
-from .exceptions.handlers import setup_exception_handlers
-from .exceptions.database import DatabaseException
-from .database.connection import check_connection
-from .constants.messages import Messages
-from .core.logger import logger
-from .database.engine import engine
+from app.api.routes import chatbot, user, session, message, document
+from app.config.settings import settings
+from app.constants.config import Config
+from app.middleware.middleware import LoggingMiddleware
+from app.middleware.metrics import MetricsMiddleware, get_metrics
+from app.exceptions.handlers import setup_exception_handlers
+from app.exceptions.database import DatabaseException
+from app.database.connection import check_connection
+from app.constants.messages import Messages
+from app.core.logger import logger
+from app.database.engine import engine
 
-# Set Langfuse environment variables if enabled
 if settings.LANGFUSE_ENABLED:
     os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
     os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
     os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
-    # Disable Langfuse telemetry (anonymous usage tracking)
     os.environ["LANGFUSE_NO_TELEMETRY"] = "1"
     logger.info("Langfuse environment variables configured (telemetry disabled)")
 
@@ -113,7 +111,7 @@ async def metrics():
 
 
 @app.get("/info")
-async def info(request: Request) -> Dict[str, Any]:
+async def info(request: Request) -> dict[str, Any]:
     """Information endpoint with system details."""
     logger.info("info_endpoint_called")
     

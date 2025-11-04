@@ -1,12 +1,12 @@
 """Think tool for analytical reasoning."""
 
-from typing import Dict, Any
 from langchain_core.messages import HumanMessage
 
-from .base import BaseTool
-from ..llm import LLMFactory, LLMProviderType
-from ..prompts.tool_prompts import get_think_prompt
-from ...config.settings import settings
+from app.ai_core.tools.base import BaseTool
+from app.ai_core.llm import LLMFactory, LLMProviderType
+from app.ai_core.prompts.tool_prompts import get_think_prompt
+from app.config.settings import settings
+from app.types import ToolParams, ToolResult
 
 
 class ThinkTool(BaseTool):
@@ -20,7 +20,7 @@ class ThinkTool(BaseTool):
     def description(self) -> str:
         return "Think through a problem step by step before taking action"
     
-    async def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, params: ToolParams) -> ToolResult:
         """Execute thinking process."""
         prompt = params.get("prompt", "")
         

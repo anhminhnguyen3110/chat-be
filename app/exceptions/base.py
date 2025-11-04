@@ -1,13 +1,15 @@
-from typing import Optional, Dict, Any
+from typing import Optional
+
+from app.types.common import ErrorDetails
 
 
-class VPAuraException(Exception):
+class BaseException(Exception):
     def __init__(
         self,
         message: str,
         code: str = "INTERNAL_ERROR",
         status_code: int = 500,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[ErrorDetails] = None
     ):
         self.message = message
         self.code = code
@@ -16,8 +18,8 @@ class VPAuraException(Exception):
         super().__init__(self.message)
 
 
-class ValidationException(VPAuraException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+class ValidationException(BaseException):
+    def __init__(self, message: str, details: Optional[ErrorDetails] = None):
         super().__init__(
             message=message,
             code="VALIDATION_ERROR",
@@ -26,7 +28,7 @@ class ValidationException(VPAuraException):
         )
 
 
-class NotFoundException(VPAuraException):
+class NotFoundException(BaseException):
     def __init__(self, message: str, resource: str):
         super().__init__(
             message=message,

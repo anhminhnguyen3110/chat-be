@@ -1,7 +1,7 @@
-from .base import VPAuraException
+from app.exceptions.base import BaseException
 
 
-class DatabaseException(VPAuraException):
+class DatabaseException(BaseException):
     pass
 
 

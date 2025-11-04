@@ -1,12 +1,20 @@
 """Neo4j MCP client for Cypher query execution."""
 
-from typing import Dict, Any, Optional, List
+from typing import Optional, List, Any
 import logging
 import asyncio
 from neo4j import AsyncGraphDatabase, AsyncDriver
 
-from .base import BaseMCPClient
-from ...config.settings import settings
+from app.ai_core.mcp.base import BaseMCPClient
+from app.config.settings import settings
+from app.types import (
+    MCPConfig,
+    MCPExecuteParams,
+    CypherExecutionResult,
+    Neo4jSchemaResult,
+    Neo4jValidationResult,
+    Neo4jExplainResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +22,7 @@ logger = logging.getLogger(__name__)
 class Neo4jMCPClient(BaseMCPClient):
     """Neo4j MCP client for Cypher execution and schema management."""
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[MCPConfig] = None):
         super().__init__(config)
         self.neo4j_driver: Optional[AsyncDriver] = None
         self.uri = config.get("uri", settings.NEO4J_URI) if config else settings.NEO4J_URI
@@ -45,7 +53,7 @@ class Neo4jMCPClient(BaseMCPClient):
             self.neo4j_driver = None
             self._connection = None
     
-    async def execute(self, command: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    async def execute(self, command: str, params: Optional[MCPExecuteParams] = None) -> Any:
         """Execute MCP command."""
         params = params or {}
         
@@ -64,7 +72,7 @@ class Neo4jMCPClient(BaseMCPClient):
         else:
             raise ValueError(f"Unknown command: {command}")
     
-    async def execute_cypher(self, query: str) -> List[Dict[str, Any]]:
+    async def execute_cypher(self, query: str) -> List[dict[str, Any]]:
         """Execute Cypher query and return results."""
         try:
             if not self.neo4j_driver:
@@ -81,7 +89,7 @@ class Neo4jMCPClient(BaseMCPClient):
             logger.error(f"Failed to execute Cypher query: {str(e)}")
             raise
     
-    async def get_schema(self) -> Dict[str, Any]:
+    async def get_schema(self) -> Neo4jSchemaResult:
         """Get database schema from Neo4j."""
         try:
             if not self.neo4j_driver:
@@ -125,7 +133,7 @@ class Neo4jMCPClient(BaseMCPClient):
             logger.error(f"Failed to get Neo4j schema: {str(e)}")
             raise
     
-    async def explain_query(self, query: str) -> Dict[str, Any]:
+    async def explain_query(self, query: str) -> Neo4jExplainResult:
         """Return EXPLAIN execution plan from Neo4j."""
         try:
             if not self.neo4j_driver:
@@ -138,14 +146,15 @@ class Neo4jMCPClient(BaseMCPClient):
                 plan = await result.consume()
                 
                 return {
-                    "plan": str(plan.plan) if plan.plan else None,
-                    "profile_info": str(plan.profile) if hasattr(plan, 'profile') else None
+                    "plan": {"summary": str(plan.plan)} if plan.plan else {},
+                    "estimated_rows": None,
+                    "db_hits": None
                 }
         except Exception as e:
             logger.error(f"Failed to explain query: {str(e)}")
             raise
     
-    async def validate_query(self, query: str) -> Dict[str, Any]:
+    async def validate_query(self, query: str) -> Neo4jValidationResult:
         """Validate query using EXPLAIN plan."""
         logger.info(f"Validating query using EXPLAIN: {query[:100]}...")
         
@@ -156,23 +165,25 @@ class Neo4jMCPClient(BaseMCPClient):
                     "valid": True,
                     "errors": [],
                     "warnings": [],
-                    "plan_summary": "Validation passed (based on EXPLAIN plan)."
+                    "suggestion": None
                 }
             else:
                 return {
                     "valid": False,
                     "errors": ["Empty plan returned from EXPLAIN."],
-                    "warnings": []
+                    "warnings": [],
+                    "suggestion": "Check query syntax"
                 }
         except Exception as e:
             logger.warning(f"EXPLAIN failed: {e}")
             return {
                 "valid": False,
                 "errors": [f"EXPLAIN failed: {e}"],
-                "warnings": []
+                "warnings": [],
+                "suggestion": "Review query syntax and parameters"
             }
 
 
-def get_neo4j_client(config: Optional[Dict[str, Any]] = None) -> Neo4jMCPClient:
+def get_neo4j_client(config: Optional[MCPConfig] = None) -> Neo4jMCPClient:
     """Return a Neo4j MCP client instance."""
     return Neo4jMCPClient(config)

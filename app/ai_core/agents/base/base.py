@@ -1,34 +1,37 @@
 """Base agent class with logging and metrics tracking."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Optional, List, Dict
 import time
 from psycopg_pool import AsyncConnectionPool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langfuse.langchain import CallbackHandler
 from langchain_core.messages import trim_messages, HumanMessage, AIMessage, SystemMessage
 
-from ....core.logger import logger as base_logger
-from ....middleware.metrics import (
+from app.core.logger import logger as base_logger
+from app.middleware.metrics import (
     agent_invocations_total,
     agent_response_time_seconds,
 )
-
-from .state import BaseAgentState
-from ....config.settings import settings, Environment
-from ...utils.message_utils import prepare_messages_for_llm
+from app.ai_core.agents.base.state import BaseAgentState
+from app.config.settings import settings, Environment
+from app.ai_core.utils.message_utils import prepare_messages_for_llm
+from app.types import (
+    AgentConfig,
+    AgentResponse, 
+    NodeReturnType,
+    LangGraphConfig,
+    MetadataDict,
+)
 
 
 class BaseAgent(ABC):
     """Abstract base class for all agents with LangGraph support."""
     
-    MAX_HISTORY_MESSAGES = 10
-    MAX_CONTEXT_TOKENS = 4000
-    
     def __init__(
         self, 
         agent_type: str,
-        config: Optional[Dict[str, Any]] = None
+        config: Optional[AgentConfig] = None
     ):
         """Initialize agent."""
         self.agent_type = agent_type
@@ -44,21 +47,17 @@ class BaseAgent(ABC):
         self._langfuse_handler = None
         self._graph_config = None  # Will be built per-request with session context
         
-        self.max_history = self.config.get("max_history", self.MAX_HISTORY_MESSAGES)
-        self.max_tokens = self.config.get("max_context_tokens", self.MAX_CONTEXT_TOKENS)
+        self.max_history = self.config.get("max_history", settings.AGENT_MAX_HISTORY_MESSAGES)
+        self.max_tokens = self.config.get("max_context_tokens", settings.AGENT_MAX_CONTEXT_TOKENS)
     
     async def _get_connection_pool(self) -> Optional[AsyncConnectionPool]:
         """Get PostgreSQL connection pool for checkpointer."""
         if self._connection_pool is None:
             try:
                 
-                # Parse DATABASE_URL
                 db_url = settings.DATABASE_URL
-                # Convert SQLAlchemy URL to psycopg format
-                # postgresql+asyncpg://user:pass@host:port/db → postgresql://user:pass@host:port/db
                 pg_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
                 
-                # Environment-specific pool size
                 max_size = {
                     Environment.DEVELOPMENT: 5,
                     Environment.TEST: 3,
@@ -91,7 +90,6 @@ class BaseAgent(ABC):
                     environment=settings.ENVIRONMENT.value
                 )
                 
-                # Production degradation
                 if settings.ENVIRONMENT == Environment.PRODUCTION:
                     self.logger.warning("continuing_without_checkpointer")
                     return None
@@ -103,8 +101,8 @@ class BaseAgent(ABC):
         self,
         session_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        metadata: Optional[MetadataDict] = None
+    ) -> Optional[LangGraphConfig]:
         """
         Build graph configuration with optional Langfuse callbacks and session tracking.
         
@@ -120,11 +118,9 @@ class BaseAgent(ABC):
             "recursion_limit": 100
         }
         
-        # Add thread ID for checkpointer if provided
         if session_id:
             config["configurable"] = {"thread_id": session_id}
         
-        # Add metadata for tracing
         config["metadata"] = {
             "agent_type": self.agent_type,
             "environment": settings.ENVIRONMENT.value if hasattr(settings, "ENVIRONMENT") else "development",
@@ -137,16 +133,11 @@ class BaseAgent(ABC):
         if session_id:
             config["metadata"]["session_id"] = session_id
         
-        # Add Langfuse callback if enabled
         if not self.enable_langfuse:
             return config
         
         try:
-            # Create new handler with context or reuse existing
             if session_id or user_id:
-                # Create handler with metadata
-                # Note: Langfuse CallbackHandler doesn't accept user_id/session_id in __init__
-                # These should be passed via metadata or tags
                 handler = CallbackHandler()
                 config["callbacks"] = [handler]
                 
@@ -158,7 +149,6 @@ class BaseAgent(ABC):
                         has_session_id=bool(session_id)
                     )
             else:
-                # Use default handler
                 if self._langfuse_handler is None:
                     self._langfuse_handler = CallbackHandler()
                     self.logger.info(
@@ -184,7 +174,6 @@ class BaseAgent(ABC):
             return self.graph
         
         try:
-            # Skip checkpointer if disabled (e.g., Windows development)
             if not settings.SHOULD_USE_CHECKPOINTER:
                 self.logger.info(
                     "checkpointer_disabled",
@@ -193,7 +182,6 @@ class BaseAgent(ABC):
                 )
                 self._checkpointer = None
                 
-                # Build and compile graph without checkpointer
                 self.graph = self._build_graph()
                 
                 self.logger.info(
@@ -202,10 +190,8 @@ class BaseAgent(ABC):
                 )
                 return self.graph
             
-            # Get connection pool
             conn_pool = await self._get_connection_pool()
             
-            # Create checkpointer if pool available
             if conn_pool:
                 self._checkpointer = AsyncPostgresSaver(conn_pool)
                 await self._checkpointer.setup()
@@ -221,10 +207,8 @@ class BaseAgent(ABC):
                     agent_type=self.agent_type
                 )
             
-            # Build graph (subclass implements _build_graph)
             graph_builder = self._build_graph()
             
-            # Compile with checkpointer
             self.graph = graph_builder.compile(
                 checkpointer=self._checkpointer
             )
@@ -244,7 +228,6 @@ class BaseAgent(ABC):
                 error=str(e)
             )
             
-            # Production degradation
             if settings.ENVIRONMENT == Environment.PRODUCTION:
                 self.logger.warning("continuing_with_basic_graph")
                 self.graph = self._build_graph().compile()
@@ -252,12 +235,12 @@ class BaseAgent(ABC):
             raise
     
     @property
-    def graph_config(self) -> Optional[Dict[str, Any]]:
+    def graph_config(self) -> Optional[LangGraphConfig]:
         """Get graph configuration for LangGraph execution."""
         return self._graph_config
     
     @property
-    def langfuse_config(self) -> Optional[Dict[str, Any]]:
+    def langfuse_config(self) -> Optional[LangGraphConfig]:
         """Deprecated: Use graph_config instead."""
         return self._graph_config
     
@@ -268,9 +251,9 @@ class BaseAgent(ABC):
     
     def truncate_history(
         self,
-        history: List[Dict[str, str]],
+        history: List[dict[str, str]],
         include_system: bool = True
-    ) -> List[Dict[str, str]]:
+    ) -> List[dict[str, str]]:
         """
         Truncate conversation history to fit within context window.
         
@@ -287,9 +270,7 @@ class BaseAgent(ABC):
         if not history:
             return []
         
-        # Use smart trimming with actual LLM tokenizer
         try:
-            # Convert to LangChain messages
             lc_messages = []
             for msg in history:
                 role = msg.get("role", "user")
@@ -302,7 +283,6 @@ class BaseAgent(ABC):
                 elif role == "assistant":
                     lc_messages.append(AIMessage(content=content))
             
-            # Trim using LLM's actual tokenizer
             trimmed = trim_messages(
                 lc_messages,
                 strategy="last",
@@ -313,7 +293,6 @@ class BaseAgent(ABC):
                 allow_partial=False,
             )
             
-            # Convert back to dict format
             result = []
             for msg in trimmed:
                 if hasattr(msg, "type"):
@@ -332,14 +311,12 @@ class BaseAgent(ABC):
             return result
             
         except Exception as e:
-            # Fallback to simple truncation if trim_messages fails
             self.logger.warning(
                 "trim_messages_failed_using_fallback",
                 error=str(e),
                 error_type=type(e).__name__
             )
             
-            # Simple fallback: keep last N messages
             max_messages = self.max_history * 2
             truncated = history[-max_messages:] if len(history) > max_messages else history
             
@@ -358,10 +335,10 @@ class BaseAgent(ABC):
         query: str,
         session_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        history: Optional[List[Dict[str, str]]] = None,
+        history: Optional[List[dict[str, str]]] = None,
         system_prompt: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: Optional[MetadataDict] = None
+    ) -> AgentResponse:
         """Execute agent with full tracking and memory management."""
         if self.graph is None:
             await self._build_graph_async()
@@ -374,7 +351,6 @@ class BaseAgent(ABC):
             "metadata": metadata or {},
         }
         
-        # Build config with session tracking
         config = self._build_graph_config(
             session_id=session_id,
             user_id=user_id,
@@ -388,9 +364,9 @@ class BaseAgent(ABC):
         query: str,
         session_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        history: Optional[List[Dict[str, str]]] = None,
+        history: Optional[List[dict[str, str]]] = None,
         system_prompt: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[MetadataDict] = None
     ):
         """
         Execute agent with streaming response.
@@ -423,24 +399,20 @@ class BaseAgent(ABC):
                 elif msg.get("role") == "assistant":
                     messages.append(AIMessage(content=msg["content"]))
         
-        # Add current query
         messages.append(HumanMessage(content=query))
         
-        # Build state
         state: BaseAgentState = {
             "messages": messages,
             "session_id": session_id,
             "metadata": metadata or {}
         }
         
-        # Build config
         config = self._build_graph_config(
             session_id=session_id,
             user_id=user_id,
             metadata=metadata
         )
         
-        # Stream execution
         try:
             self.logger.info(
                 "agent_stream_started",
@@ -455,13 +427,11 @@ class BaseAgent(ABC):
                 stream_mode="messages"
             ):
                 try:
-                    # Extract message from event
                     if isinstance(event, tuple):
                         message, _ = event
                     else:
                         message = event
                     
-                    # Get content from message
                     if hasattr(message, "content") and message.content:
                         yield message.content
                         
@@ -471,7 +441,6 @@ class BaseAgent(ABC):
                         error=str(token_error),
                         agent_type=self.agent_type
                     )
-                    # Continue streaming despite token error
                     continue
             
             self.logger.info(
@@ -489,13 +458,11 @@ class BaseAgent(ABC):
             )
             raise
     
-    async def _execute_internal(self, state: BaseAgentState, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_internal(self, state: BaseAgentState, config: Optional[LangGraphConfig] = None) -> AgentResponse:
         """Internal execution with tracking and optional Langfuse tracing."""
-        # Build graph if not already built
         if self.graph is None:
             await self._build_graph_async()
         
-        # Use provided config or fall back to self.graph_config
         execution_config = config or self.graph_config
         
         self.logger.info(
@@ -515,7 +482,6 @@ class BaseAgent(ABC):
             
             duration = time.time() - start_time
             
-            # Extract response from messages (last AI message)
             response_text = ""
             if "messages" in result and result["messages"]:
                 last_message = result["messages"][-1]
@@ -524,7 +490,6 @@ class BaseAgent(ABC):
                 else:
                     response_text = str(last_message)
             
-            # Add response field for backward compatibility
             result["response"] = response_text
             
             self.logger.info(
@@ -578,7 +543,6 @@ class BaseAgent(ABC):
             return []
         
         try:
-            # Get state from checkpointer
             state_snapshot = self.graph.get_state(
                 config={"configurable": {"thread_id": session_id}}
             )
@@ -586,10 +550,8 @@ class BaseAgent(ABC):
             if not state_snapshot.values:
                 return []
             
-            # Extract messages from state
             messages = state_snapshot.values.get("messages", [])
             
-            # Convert to dict format
             history = []
             for msg in messages:
                 if hasattr(msg, "type") and msg.type in ["human", "ai"]:
@@ -622,7 +584,6 @@ class BaseAgent(ABC):
             if not conn_pool:
                 return
             
-            # Delete from checkpoint tables
             checkpoint_tables = settings.CHECKPOINT_TABLES if hasattr(settings, "CHECKPOINT_TABLES") else [
                 "checkpoints",
                 "checkpoint_writes", 
@@ -655,7 +616,7 @@ class BaseAgent(ABC):
                 error=str(e)
             )
     
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> AgentConfig:
         """Get agent configuration."""
         return self.config
 

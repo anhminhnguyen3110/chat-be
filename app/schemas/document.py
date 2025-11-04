@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
-from .base import BaseSchema, TimestampSchema
+from app.schemas.base import BaseSchema, TimestampSchema
 
 
 class DocumentBase(BaseSchema):

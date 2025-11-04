@@ -5,7 +5,7 @@ Note: To enable, install slowapi and configure in main.py and routes.
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from ..config.settings import settings
+from app.config.settings import settings
 
 
 limiter = Limiter(

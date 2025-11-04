@@ -14,9 +14,9 @@ from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from ..core.logger import logger
-from .base import VPAuraException
-from .api import (
+from app.core.logger import logger
+from app.exceptions.base import BaseException
+from app.exceptions.api import (
     APIException,
     UnauthorizedException,
     ForbiddenException,
@@ -36,11 +36,8 @@ def unwrap_exception(exc: Exception) -> Exception:
     Returns:
         The unwrapped exception
     """
-    # Check if we're running Python 3.11+ and have ExceptionGroup
     if sys.version_info >= (3, 11):
-        # If the exception is an ExceptionGroup, unwrap it
         if type(exc).__name__ == 'ExceptionGroup':
-            # Get the first exception from the group
             if hasattr(exc, 'exceptions') and exc.exceptions:
                 return exc.exceptions[0]
     
@@ -75,19 +72,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-async def vpaura_exception_handler(request: Request, exc: VPAuraException) -> JSONResponse:
-    """Handle custom VPAura exceptions.
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle all exceptions with appropriate status codes and messages.
     
     Args:
         request: The request that caused the exception
-        exc: The VPAura exception
+        exc: The exception
         
     Returns:
-        JSONResponse: A formatted error response with appropriate status code
+        JSONResponse: A formatted error response
     """
     exc = unwrap_exception(exc)
     
-    if isinstance(exc, VPAuraException):
+    if isinstance(exc, BaseException):
         logger.warning(
             "vpaura_exception",
             error_type=type(exc).__name__,
@@ -101,32 +98,20 @@ async def vpaura_exception_handler(request: Request, exc: VPAuraException) -> JS
             status_code=exc.status_code,
             content={
                 "status": "error",
-                "code": exc.code,
-                "message": exc.message,
-                "details": exc.details,
+                "error": exc.code,
+                "detail": exc.message,
+                "path": request.url.path,
                 "timestamp": datetime.now().isoformat(),
             }
         )
     
-    return await global_exception_handler(request, exc)
-
-
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle unexpected exceptions.
-    
-    Args:
-        request: The request that caused the exception
-        exc: The exception
-        
-    Returns:
-        JSONResponse: A generic 500 error response
-    """
-    exc = unwrap_exception(exc)
+    error_type = type(exc).__name__
+    error_message = str(exc)
     
     logger.error(
         "unhandled_exception",
-        error_type=type(exc).__name__,
-        error=str(exc),
+        error_type=error_type,
+        error=error_message,
         path=request.url.path,
         method=request.method,
         client_host=request.client.host if request.client else "unknown",
@@ -136,8 +121,11 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     return JSONResponse(
         status_code=500,
         content={
+            "status": "error",
             "error": "Internal Server Error",
-            "detail": "An unexpected error occurred",
+            "error_type": error_type,
+            "detail": error_message,
+            "path": request.url.path,
             "timestamp": datetime.now().isoformat(),
         }
     )
@@ -149,23 +137,16 @@ def setup_exception_handlers(app) -> None:
     Args:
         app: The FastAPI application instance
     """
-    # Handle ExceptionGroup (Python 3.11+) by unwrapping and re-routing
     if sys.version_info >= (3, 11):
         @app.exception_handler(Exception)
         async def unified_exception_handler(request: Request, exc: Exception):
             """Unified handler that unwraps ExceptionGroup and routes to appropriate handler."""
-            # Unwrap ExceptionGroup if present
             unwrapped_exc = unwrap_exception(exc)
             
-            # Route to appropriate handler based on exception type
             if isinstance(unwrapped_exc, RequestValidationError):
                 return await validation_exception_handler(request, unwrapped_exc)
-            elif isinstance(unwrapped_exc, VPAuraException):
-                return await vpaura_exception_handler(request, unwrapped_exc)
             else:
                 return await global_exception_handler(request, unwrapped_exc)
     else:
-        # Python 3.10 and below - use traditional handlers
         app.add_exception_handler(RequestValidationError, validation_exception_handler)
-        app.add_exception_handler(VPAuraException, vpaura_exception_handler)
         app.add_exception_handler(Exception, global_exception_handler)

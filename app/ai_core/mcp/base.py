@@ -1,7 +1,9 @@
 """Base MCP client interface."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Optional, Any
+
+from app.types import MCPConfig, MCPExecuteParams
 
 
 class BaseMCPClient(ABC):
@@ -12,7 +14,7 @@ class BaseMCPClient(ABC):
     like databases, APIs, etc.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[MCPConfig] = None):
         """
         Initialize MCP client.
         
@@ -41,7 +43,7 @@ class BaseMCPClient(ABC):
         pass
     
     @abstractmethod
-    async def execute(self, command: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    async def execute(self, command: str, params: Optional[MCPExecuteParams] = None) -> Any:
         """
         Execute MCP command.
         

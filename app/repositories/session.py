@@ -2,8 +2,8 @@ from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .base import BaseRepository
-from ..models.session import Session
+from app.repositories.base import BaseRepository
+from app.models.session import Session
 
 
 class SessionRepository(BaseRepository[Session]):

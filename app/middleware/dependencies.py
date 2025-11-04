@@ -1,8 +1,8 @@
 from fastapi import Depends, Header, HTTPException
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..database.session import get_async_session
-from ..constants.errors import ErrorMessages
+from app.database.session import get_async_session
+from app.constants.errors import ErrorMessages
 
 
 async def get_db_session():

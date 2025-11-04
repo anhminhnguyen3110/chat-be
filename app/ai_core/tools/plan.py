@@ -1,12 +1,13 @@
 """Plan tool for creating step-by-step execution plans."""
 
-from typing import Dict, Any, List
+from typing import List
 from langchain_core.messages import HumanMessage
 
-from .base import BaseTool
-from ..llm import LLMFactory, LLMProviderType
-from ..prompts.tool_prompts import get_plan_prompt
-from ...config.settings import settings
+from app.ai_core.tools.base import BaseTool
+from app.ai_core.llm import LLMFactory, LLMProviderType
+from app.ai_core.prompts.tool_prompts import get_plan_prompt
+from app.config.settings import settings
+from app.types import ToolParams, ToolResult
 
 
 class PlanTool(BaseTool):
@@ -25,7 +26,7 @@ class PlanTool(BaseTool):
     def description(self) -> str:
         return "Create a step-by-step plan for executing a complex task"
     
-    async def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, params: ToolParams) -> ToolResult:
         """
         Execute planning process.
         

@@ -1,7 +1,8 @@
 """Base tool interface."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+
+from app.types import ToolParams, ToolResult
 
 
 class BaseTool(ABC):
@@ -35,7 +36,7 @@ class BaseTool(ABC):
         pass
     
     @abstractmethod
-    async def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, params: ToolParams) -> ToolResult:
         """
         Execute the tool with given parameters.
         

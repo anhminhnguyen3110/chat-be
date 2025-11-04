@@ -7,10 +7,10 @@ database bloat while optionally archiving them to S3 for compliance.
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 import logging
 
-from ..config.settings import settings
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,6 @@ class CheckpointCleanupService:
         deletion_counts = {}
         
         try:
-            # Optional: Archive to S3 before deletion
             if archive_to_s3:
                 archived_count = self._archive_to_s3()
                 logger.info(
@@ -59,10 +58,8 @@ class CheckpointCleanupService:
                     count=archived_count
                 )
             
-            # Delete from checkpoint tables
             for table in self.checkpoint_tables:
                 try:
-                    # Checkpoints table has 'ts' timestamp field
                     if table == "checkpoints":
                         result = await self.session.execute(
                             text(f"""
@@ -72,8 +69,6 @@ class CheckpointCleanupService:
                             {"cutoff": cutoff_date}
                         )
                     else:
-                        # Related tables: delete by thread_id from deleted checkpoints
-                        # This is handled by CASCADE in most cases, but explicit for clarity
                         result = await self.session.execute(
                             text(f"""
                                 DELETE FROM {table}
@@ -132,7 +127,7 @@ class CheckpointCleanupService:
         logger.warning("s3_archiving_not_implemented")
         return 0
     
-    async def get_checkpoint_stats(self) -> Dict[str, Any]:
+    async def get_checkpoint_stats(self) -> dict[str, any]:
         """
         Get statistics about checkpoints in the database.
         
@@ -142,13 +137,11 @@ class CheckpointCleanupService:
         stats = {}
         
         try:
-            # Total checkpoints
             result = await self.session.execute(
                 text("SELECT COUNT(*) FROM checkpoints")
             )
             stats["total_checkpoints"] = result.scalar()
             
-            # Checkpoints by age
             result = await self.session.execute(
                 text("""
                     SELECT 
@@ -165,19 +158,16 @@ class CheckpointCleanupService:
                 "older_than_30_days": age_stats[2]
             }
             
-            # Unique threads
             result = await self.session.execute(
                 text("SELECT COUNT(DISTINCT thread_id) FROM checkpoints")
             )
             stats["unique_threads"] = result.scalar()
             
-            # Checkpoint writes count
             result = await self.session.execute(
                 text("SELECT COUNT(*) FROM checkpoint_writes")
             )
             stats["total_checkpoint_writes"] = result.scalar()
             
-            # Checkpoint blobs count
             result = await self.session.execute(
                 text("SELECT COUNT(*) FROM checkpoint_blobs")
             )

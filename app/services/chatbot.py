@@ -1,29 +1,29 @@
 """Chatbot service for smart chat with agent routing and DB persistence."""
 
-from typing import AsyncGenerator, Optional, List, Dict, Any
+from typing import AsyncGenerator, Optional, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
-from ..ai_core.agents import AgentRouter
-from ..ai_core.agents.agent_factory import AgentFactory, AgentType
-from ..ai_core.llm import LLMFactory, LLMProviderType
-from ..config.settings import settings
+from app.ai_core.agents import AgentRouter
+from app.ai_core.agents.agent_factory import AgentFactory, AgentType
+from app.ai_core.llm import LLMFactory, LLMProviderType
+from app.config.settings import settings
 from langchain_core.messages import HumanMessage
-from ..schemas.chatbot import ChatRequest, ChatResponse, ChatCompletionRequest, ChatCompletionResponse, StreamChunk
-from ..schemas.message import MessageCreate
-from ..schemas.session import SessionCreate
-from ..repositories.session import SessionRepository
-from ..repositories.message import MessageRepository
-from ..repositories.user import UserRepository
-from .message import MessageService
-from .session import SessionService
-from ..models.session import Session
-from ..models.message import Message
-from ..constants.enums import MessageRole
-from ..exceptions.service import LLMException
-from ..exceptions.database import DatabaseException
-from ..exceptions.base import NotFoundException
+from app.schemas.chatbot import ChatRequest, ChatResponse, ChatCompletionRequest, ChatCompletionResponse, StreamChunk
+from app.schemas.message import MessageCreate
+from app.schemas.session import SessionCreate
+from app.repositories.session import SessionRepository
+from app.repositories.message import MessageRepository
+from app.repositories.user import UserRepository
+from app.services.message import MessageService
+from app.services.session import SessionService
+from app.models.session import Session
+from app.models.message import Message
+from app.constants.enums import MessageRole
+from app.exceptions.service import LLMException
+from app.exceptions.database import DatabaseException
+from app.exceptions.base import NotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -68,17 +68,14 @@ class ChatbotService:
         logger.info(f"Chat request from user {user_id}: {request.query[:50]}...")
         
         try:
-            # Validate user exists
             user = await self.user_repo.get_by_id(user_id)
             if not user:
                 raise NotFoundException(f"User with ID {user_id} not found", "user")
             
-            # Track if session is newly created
             is_new_session = False
             session_obj = None
             
             if request.session_id:
-                # Try to get existing session
                 try:
                     session_int = int(request.session_id)
                     session_obj = await self.session_repo.get_by_id(session_int)
@@ -89,7 +86,6 @@ class ChatbotService:
                     raise NotFoundException("Invalid session ID format", "session")
             
             if not session_obj:
-                # Create new session
                 session_obj = Session(
                     name=request.query[:50],
                     user_id=user_id
@@ -133,10 +129,8 @@ class ChatbotService:
             )
             
         except NotFoundException:
-            # Re-raise validation errors (404)
             raise
         except DatabaseException:
-            # Re-raise database errors (500)
             raise
         except Exception as e:
             logger.error(f"Chat failed: {str(e)}", exc_info=True)
@@ -151,7 +145,7 @@ class ChatbotService:
         request: ChatRequest,
         user_id: int,
         confidence_threshold: float = 0.6
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, any], None]:
         """
         REAL streaming chat with automatic intent detection and DB persistence.
         
@@ -166,12 +160,10 @@ class ChatbotService:
         logger.info(f"Stream chat request from user {user_id}: {request.query[:50]}...")
         
         try:
-            # Track if session is newly created
             is_new_session = False
             session_obj = None
             
             if request.session_id:
-                # Try to get existing session
                 try:
                     session_int = int(request.session_id)
                     session_obj = await self.session_repo.get_by_id(session_int)
@@ -182,7 +174,6 @@ class ChatbotService:
                     raise NotFoundException("Invalid session ID format", "session")
             
             if not session_obj:
-                # Create new session
                 session_obj = Session(
                     name=request.query[:50],
                     user_id=user_id
@@ -194,7 +185,6 @@ class ChatbotService:
             
             history = await self._build_history(session_obj.id)
             
-            # Detect intent (with confidence-based fallback)
             auto_routed = False
             confidence = 1.0
             agent_type_enum = None
@@ -212,7 +202,6 @@ class ChatbotService:
                 auto_routed = True
                 logger.info(f"Auto-routed to {agent_type_enum} (confidence: {confidence:.2f})")
             
-            # Create agent directly (bypass router to use execute_stream)
             agent = AgentFactory.create(agent_type_enum, config=None)
             
             full_response = ""
@@ -266,31 +255,28 @@ class ChatbotService:
         logger.info(f"Completion request: {request.query[:50]}...")
         
         try:
-            # Create LLM with custom parameters if provided
             llm = LLMFactory.create(
                 provider_type=LLMProviderType(settings.LLM_PROVIDER),
-                model=request.model or settings.LLM_MODEL,
-                temperature=request.temperature or settings.LLM_TEMPERATURE,
-                max_tokens=request.max_tokens or settings.LLM_MAX_TOKENS,
+                model=settings.LLM_MODEL,
+                temperature=settings.LLM_TEMPERATURE,
+                max_tokens=settings.LLM_MAX_TOKENS,
                 api_key=settings.LLM_API_KEY,
                 base_url=settings.LLM_BASE_URL,
-                enable_guardrail=request.use_guardrail if request.use_guardrail is not None else settings.ENABLE_GUARDRAIL
+                enable_guardrail=settings.ENABLE_GUARDRAIL
             )
             
-            # Guardrail validation happens automatically in ainvoke
             try:
                 response = await llm.ainvoke([HumanMessage(content=request.query)])
             except ValueError as ve:
-                # Guardrail blocked the request/response
                 return ChatCompletionResponse(
                     content=str(ve),
-                    model=request.model or settings.LLM_MODEL,
+                    model=settings.LLM_MODEL,
                     guardrail_result={"valid": False, "reason": str(ve), "blocked": True}
                 )
             
             return ChatCompletionResponse(
                 content=response.content,
-                model=request.model or settings.LLM_MODEL,
+                model=settings.LLM_MODEL,
                 usage={
                     "prompt_tokens": response.response_metadata.get("token_usage", {}).get("prompt_tokens", 0),
                     "completion_tokens": response.response_metadata.get("token_usage", {}).get("completion_tokens", 0),

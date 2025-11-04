@@ -1,11 +1,11 @@
 """Document service for managing user documents."""
 
-from ..repositories.document import DocumentRepository
-from ..schemas.document import DocumentCreate, DocumentResponse
-from ..models.document import Document
-from ..exceptions.base import NotFoundException
-from ..exceptions.database import DatabaseException
-from ..constants.messages import Messages
+from app.repositories.document import DocumentRepository
+from app.schemas.document import DocumentCreate, DocumentResponse
+from app.models.document import Document
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
+from app.constants.messages import Messages
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List

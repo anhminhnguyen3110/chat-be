@@ -39,6 +39,5 @@ Format: Use numbered list (1., 2., 3., etc.)
 </plan>"""
 
 
-# Template constants
 THINK_PROMPT_TEMPLATE = get_think_prompt
 PLAN_PROMPT_TEMPLATE = get_plan_prompt

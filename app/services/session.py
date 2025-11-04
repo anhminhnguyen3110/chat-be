@@ -1,17 +1,17 @@
 """Session service for managing user sessions."""
 
-from ..repositories.session import SessionRepository
-from ..schemas.session import SessionCreate, SessionResponse, SessionUpdate, GroupedSessionsResponse
-from ..models.session import Session
-from ..exceptions.base import NotFoundException
-from ..exceptions.database import DatabaseException
-from ..constants.messages import Messages
+from app.repositories.session import SessionRepository
+from app.schemas.session import SessionCreate, SessionResponse, SessionUpdate, GroupedSessionsResponse
+from app.models.session import Session
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
+from app.constants.messages import Messages
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 import logging
 from datetime import datetime, timedelta, timezone
-from ..ai_core.agents.agent_factory import AgentFactory, AgentType
+from app.ai_core.agents.agent_factory import AgentFactory, AgentType
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,6 @@ class SessionService:
         Returns up to 'limit' sessions per group.
         """
         try:
-            # Get all sessions for user (ordered by created_at DESC)
             all_sessions = await self.repository.get_by_user_id(user_id, skip=0, limit=1000)
             
             now = datetime.now(timezone.utc)
@@ -99,7 +98,6 @@ class SessionService:
             for session in all_sessions:
                 session_response = SessionResponse.model_validate(session)
                 
-                # Ensure created_at is timezone-aware
                 created_at = session.created_at
                 if created_at.tzinfo is None:
                     created_at = created_at.replace(tzinfo=timezone.utc)
@@ -142,7 +140,6 @@ class SessionService:
             if not session_obj:
                 raise NotFoundException(Messages.SESSION_NOT_FOUND, "Session")
             
-            # Update fields
             if session_data.name is not None:
                 session_obj.name = session_data.name
             

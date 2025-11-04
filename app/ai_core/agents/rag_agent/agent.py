@@ -1,21 +1,22 @@
 """RAG agent for retrieval-augmented generation."""
 
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 from langgraph.graph import StateGraph, END
 
-from ..base import BaseAgent
-from ...llm.llm_factory import LLMFactory
-from .state import RAGAgentState
-from ...tools.think import ThinkTool
-from ...tools.plan import PlanTool
-from ...vectorstore.pgvector_store import PgVectorStore
-from ...vectorstore.base import Document
-from ...vectorstore.embeddings import get_embedding_function
-from ...prompts.rag_prompts import (
+from app.ai_core.agents.base import BaseAgent
+from app.ai_core.llm.llm_factory import LLMFactory
+from app.ai_core.agents.rag_agent.state import RAGAgentState
+from app.ai_core.tools.think import ThinkTool
+from app.ai_core.tools.plan import PlanTool
+from app.ai_core.vectorstore.pgvector_store import PgVectorStore
+from app.ai_core.vectorstore.base import Document
+from app.ai_core.vectorstore.embeddings import get_embedding_function
+from app.ai_core.prompts.rag_prompts import (
     get_rag_thinking_prompt,
     get_rag_planning_prompt,
     get_rag_generation_prompt
 )
+from app.types import AgentConfig, NodeReturnType, VectorStoreConfig
 
 
 class RAGAgent(BaseAgent):
@@ -41,7 +42,7 @@ class RAGAgent(BaseAgent):
         self,
         llm_provider: Optional[str] = None,
         model: Optional[str] = None,
-        vectorstore_config: Optional[Dict[str, Any]] = None,
+        vectorstore_config: Optional[VectorStoreConfig] = None,
         top_k: int = 5,
         **kwargs
     ):
@@ -92,12 +93,11 @@ class RAGAgent(BaseAgent):
         
         return workflow.compile()
     
-    async def _think_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _think_node(self, state: RAGAgentState) -> NodeReturnType:
         """Think about the retrieval strategy."""
         self.logger.info("Executing think node")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             
             prompt = get_rag_thinking_prompt(query)
@@ -109,12 +109,11 @@ class RAGAgent(BaseAgent):
             self.logger.error(f"Think node error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _plan_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _plan_node(self, state: RAGAgentState) -> NodeReturnType:
         """Plan the retrieval strategy."""
         self.logger.info("Executing plan node")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             
             prompt = get_rag_planning_prompt(
@@ -129,12 +128,11 @@ class RAGAgent(BaseAgent):
             self.logger.error(f"Plan node error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _retrieve_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _retrieve_node(self, state: RAGAgentState) -> NodeReturnType:
         """Retrieve relevant documents."""
         self.logger.info("Executing retrieve node")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             
             filter_dict = state.get("metadata_filter")
@@ -156,7 +154,7 @@ class RAGAgent(BaseAgent):
             self.logger.error(f"Retrieve node error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _rerank_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _rerank_node(self, state: RAGAgentState) -> NodeReturnType:
         """Rerank retrieved documents."""
         self.logger.info("Executing rerank node")
         
@@ -183,12 +181,11 @@ class RAGAgent(BaseAgent):
             self.logger.error(f"Rerank node error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _generate_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _generate_node(self, state: RAGAgentState) -> NodeReturnType:
         """Generate answer with retrieved context."""
         self.logger.info("Executing generate node")
         
         try:
-            # Extract query from last message
             query = state["messages"][-1].content if state.get("messages") else ""
             reranked_docs = state.get("reranked_docs", [])
             
@@ -214,7 +211,7 @@ class RAGAgent(BaseAgent):
             self.logger.error(f"Generate node error: {str(e)}", exc_info=True)
             return {"error": str(e)}
     
-    async def _respond_node(self, state: RAGAgentState) -> Dict[str, Any]:
+    async def _respond_node(self, state: RAGAgentState) -> NodeReturnType:
         """Format and return final response."""
         self.logger.info("Executing respond node")
         
@@ -228,7 +225,6 @@ class RAGAgent(BaseAgent):
         context_used = state.get("context_used", 0)
         retrieval_count = state.get("retrieval_count", 0)
         
-        # Format response
         response_parts = [answer]
         
         if context_used > 0:

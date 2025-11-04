@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from ...schemas.user import UserCreate, UserResponse
-from ...services.user import UserService
-from ...database.session import get_db_session
-from ...exceptions.base import NotFoundException
-from ...exceptions.database import DatabaseException
+from app.schemas.user import UserCreate, UserResponse
+from app.services.user import UserService
+from app.database.session import get_db_session
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
 import logging
 
 logger = logging.getLogger(__name__)

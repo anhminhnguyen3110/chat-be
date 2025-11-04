@@ -1,6 +1,8 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional, Any, Literal
-from ..constants.enums import MessageRole
+from typing import List, Dict, Optional, Literal
+from app.constants.enums import MessageRole
+from app.types.common import MetadataDict
+from app.types.guardrail import GuardrailValidationResult
 
 
 class ChatMessage(BaseModel):
@@ -12,14 +14,13 @@ class StreamChunk(BaseModel):
     """Streaming response chunk with type."""
     type: Literal["chunk", "error", "done"]
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[MetadataDict] = None
 
 
 class ChatRequest(BaseModel):
     """Request for smart chat with agent routing."""
     query: str
     session_id: Optional[int | str] = None  # Accept both int and string
-    confidence_threshold: Optional[float] = 0.6  # Minimum confidence for auto-routing
 
 
 class ChatResponse(BaseModel):
@@ -35,20 +36,15 @@ class ChatResponse(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    query: str  # Changed from 'prompt' to match test
-    user_id: Optional[int] = None
+    query: str
     session_id: Optional[int | str] = None
-    model: Optional[str] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    use_guardrail: Optional[bool] = True
 
 
 class ChatCompletionResponse(BaseModel):
     content: str
     model: str
     usage: Optional[Dict[str, int]] = None
-    guardrail_result: Optional[Dict[str, Any]] = None
+    guardrail_result: Optional[GuardrailValidationResult] = None
 
 
 class DeleteMessagesRequest(BaseModel):

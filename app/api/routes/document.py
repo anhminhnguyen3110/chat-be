@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from ...services.document import DocumentService
-from ...schemas.document import DocumentCreate, DocumentResponse
-from ...database.session import get_db_session
-from ...exceptions.base import NotFoundException
-from ...exceptions.database import DatabaseException
+from app.services.document import DocumentService
+from app.schemas.document import DocumentCreate, DocumentResponse
+from app.database.session import get_db_session
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import logging

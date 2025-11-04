@@ -98,5 +98,4 @@ Create a detailed retrieval and answer plan with numbered steps:
 Format: Use numbered list (1., 2., 3., etc.) with sub-points."""
 
 
-# Legacy constants
 RAG_GENERATION_PROMPT = get_rag_generation_prompt

@@ -1,9 +1,9 @@
 """Message service for managing session messages."""
 
-from ..repositories.message import MessageRepository
-from ..schemas.message import MessageCreate, MessageResponse
-from ..models.message import Message
-from ..exceptions.database import DatabaseException
+from app.repositories.message import MessageRepository
+from app.schemas.message import MessageCreate, MessageResponse
+from app.models.message import Message
+from app.exceptions.database import DatabaseException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional

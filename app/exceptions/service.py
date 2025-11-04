@@ -1,7 +1,7 @@
-from .base import VPAuraException
+from app.exceptions.base import BaseException
 
 
-class ServiceException(VPAuraException):
+class ServiceException(BaseException):
     pass
 
 

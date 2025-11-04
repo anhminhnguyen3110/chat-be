@@ -76,7 +76,6 @@ class EmbeddingFunction:
         return [x / norm for x in vector]
 
 
-# Singleton instance
 _embedding_function: Optional[EmbeddingFunction] = None
 
 

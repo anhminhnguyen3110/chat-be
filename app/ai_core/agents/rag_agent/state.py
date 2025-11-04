@@ -1,7 +1,8 @@
 """RAG agent state definition."""
 
-from typing import Optional, Dict, List, Any
-from ..base import BaseAgentState
+from typing import Optional, List, Any
+from app.ai_core.agents.base.state import BaseAgentState
+from app.types import VectorStoreFilter
 
 
 class RAGAgentState(BaseAgentState, total=False):
@@ -35,10 +36,10 @@ class RAGAgentState(BaseAgentState, total=False):
     """
     
     thinking: Optional[str]
-    plan: Optional[Dict[str, Any]]
+    plan: Optional[dict]
     retrieved_docs: Optional[List[tuple]]
     reranked_docs: Optional[List[tuple]]
     answer: Optional[str]
     context_used: Optional[int]
     retrieval_count: Optional[int]
-    metadata_filter: Optional[Dict[str, Any]]
+    metadata_filter: Optional[VectorStoreFilter]

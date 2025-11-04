@@ -2,8 +2,8 @@ from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from .base import BaseRepository
-from ..models.document import Document
+from app.repositories.base import BaseRepository
+from app.models.document import Document
 
 
 class DocumentRepository(BaseRepository[Document]):
@@ -27,8 +27,6 @@ class DocumentRepository(BaseRepository[Document]):
         return list(result.scalars().all())
     
     async def get_by_thread_id(self, thread_id: int) -> List[Document]:
-        # Note: conversations table has been removed
-        # This method is kept for backward compatibility but returns empty list
         return []
     
     async def create(self, entity: Document) -> Document:

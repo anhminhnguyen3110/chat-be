@@ -1,5 +1,5 @@
 from pydantic import EmailStr
-from .base import BaseSchema, TimestampSchema
+from app.schemas.base import BaseSchema, TimestampSchema
 
 
 class UserBase(BaseSchema):

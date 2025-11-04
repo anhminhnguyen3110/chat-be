@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from .base import BaseSchema, TimestampSchema
+from app.schemas.base import BaseSchema, TimestampSchema
 
 
 class SessionBase(BaseSchema):

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, Text, Enum as SQLEnum, Index, CheckConstraint
 from sqlalchemy.orm import relationship
-from .base import BaseModel
-from ..constants.enums import MessageRole
+from app.models.base import BaseModel
+from app.constants.enums import MessageRole
 
 
 class Message(BaseModel):

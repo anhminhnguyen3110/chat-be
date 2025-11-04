@@ -1,12 +1,13 @@
 """Mock pgvector store for development."""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 import logging
 import asyncio
 import math
 import random
 
-from .base import BaseVectorStore, Document
+from app.ai_core.vectorstore.base import BaseVectorStore, Document
+from app.types import VectorStoreConfig, VectorStoreFilter, DocumentWithScore, VectorStoreStats
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class PgVectorStore(BaseVectorStore):
     - Metadata filtering
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[VectorStoreConfig] = None):
         """
         Initialize pgvector store.
         
@@ -69,7 +70,7 @@ class PgVectorStore(BaseVectorStore):
         self,
         query: str,
         k: int = 5,
-        filter_dict: Optional[Dict[str, Any]] = None,
+        filter_dict: Optional[VectorStoreFilter] = None,
         **kwargs
     ) -> List[Document]:
         """
@@ -96,9 +97,9 @@ class PgVectorStore(BaseVectorStore):
         self,
         query: str,
         k: int = 5,
-        filter_dict: Optional[Dict[str, Any]] = None,
+        filter_dict: Optional[VectorStoreFilter] = None,
         **kwargs
-    ) -> List[tuple[Document, float]]:
+    ) -> List[DocumentWithScore]:
         """
         Search for similar documents with scores (mocked).
         
@@ -163,7 +164,7 @@ class PgVectorStore(BaseVectorStore):
         
         return [self._documents[doc_id] for doc_id in ids if doc_id in self._documents]
     
-    def _apply_filters(self, filter_dict: Optional[Dict[str, Any]]) -> List[Document]:
+    def _apply_filters(self, filter_dict: Optional[VectorStoreFilter]) -> List[Document]:
         """
         Apply metadata filters to documents.
         
@@ -210,7 +211,7 @@ class PgVectorStore(BaseVectorStore):
         dot_product = sum(a * b for a, b in zip(vec1, vec2))
         return max(0.0, min(1.0, dot_product))
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> VectorStoreStats:
         """
         Get store statistics.
         
@@ -224,8 +225,7 @@ class PgVectorStore(BaseVectorStore):
         }
 
 
-# Convenience function to get store instance
-def get_pgvector_store(config: Optional[Dict[str, Any]] = None) -> PgVectorStore:
+def get_pgvector_store(config: Optional[VectorStoreConfig] = None) -> PgVectorStore:
     """
     Get pgvector store instance.
     

@@ -3,7 +3,7 @@
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
 from fastapi import Request, FastAPI
 from starlette.responses import PlainTextResponse
-from ..config.settings import settings
+from app.config.settings import settings
 import time
 
 

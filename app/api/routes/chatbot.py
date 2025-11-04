@@ -3,12 +3,13 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from ...schemas.chatbot import ChatRequest, ChatResponse, ChatCompletionRequest, ChatCompletionResponse
-from ...services.chatbot import ChatbotService
-from ...core.streaming import StreamingResponse as SSEStreaming
-from ...database.session import get_db_session
-from ...exceptions.database import DatabaseException
-from ...exceptions.base import NotFoundException
+from app.schemas.chatbot import ChatRequest, ChatResponse, ChatCompletionRequest, ChatCompletionResponse
+from app.services.chatbot import ChatbotService
+from app.core.streaming import StreamingResponse as SSEStreaming
+from app.database.session import get_db_session
+from app.exceptions.database import DatabaseException
+from app.exceptions.base import NotFoundException
+from app.config.settings import settings
 from typing import Optional
 import logging
 
@@ -34,7 +35,7 @@ async def chat(
         return await service.chat(
             request=request,
             user_id=user_id,
-            confidence_threshold=request.confidence_threshold
+            confidence_threshold=settings.AGENT_CONFIDENCE_THRESHOLD
         )
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -67,7 +68,7 @@ async def chat_stream(
                     service.chat_stream(
                         request=request,
                         user_id=user_id,
-                        confidence_threshold=request.confidence_threshold
+                        confidence_threshold=settings.AGENT_CONFIDENCE_THRESHOLD
                     )
                 ):
                     yield chunk

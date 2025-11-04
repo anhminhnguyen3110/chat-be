@@ -1,11 +1,11 @@
 """User service for managing user operations."""
 
-from ..repositories.user import UserRepository
-from ..schemas.user import UserCreate, UserResponse
-from ..models.user import User
-from ..exceptions.base import NotFoundException
-from ..exceptions.database import DatabaseException
-from ..constants.messages import Messages
+from app.repositories.user import UserRepository
+from app.schemas.user import UserCreate, UserResponse
+from app.models.user import User
+from app.exceptions.base import NotFoundException
+from app.exceptions.database import DatabaseException
+from app.constants.messages import Messages
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
